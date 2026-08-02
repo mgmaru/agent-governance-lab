@@ -160,7 +160,7 @@ LLM Judgeが高評価でも、Code Scorerが検出した重大失敗は上書き
 
 | 週 | Phase | 週末に残すもの |
 |---:|---|---|
-| 1 | 目的・境界の固定 | ケーススタディ、Project Charter、Rules of Engagement |
+| 1 | 目的・境界の固定 | Project Charter、Rules of Engagement、テストデータ方針 |
 | 2 | 権限と試験契約 | 脅威モデル、権限表、Policy、12ケース仕様 |
 | 3 | Policy Coreと模擬会社 | 単体テスト、Gateway、模擬MCP、Sink、Probe |
 | 4 | 信頼境界と証拠 | Compose、network分離、相関ログ、状態snapshot |
