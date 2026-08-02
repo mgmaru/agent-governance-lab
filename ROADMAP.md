@@ -293,6 +293,10 @@ flowchart LR
 
 ```text
 .
+├── .github/
+│   └── workflows/
+├── .env.example
+├── CODEOWNERS
 ├── README.md
 ├── ROADMAP.md
 ├── Makefile
@@ -301,8 +305,13 @@ flowchart LR
 │   ├── adr/
 │   ├── architecture.md
 │   ├── authorization-matrix.md
+│   ├── event-schema.md
+│   ├── network-boundaries.md
 │   ├── project-charter.md
+│   ├── reproduction.md
 │   ├── rules-of-engagement.md
+│   ├── skill-review-checklist.md
+│   ├── test-data-policy.md
 │   └── threat-model.md
 ├── policy/
 │   ├── access-policy.schema.json
@@ -319,12 +328,88 @@ flowchart LR
 ├── probe/
 ├── evals/
 │   └── inspect/
+│       ├── agents/
+│       ├── scorers/
+│       └── tasks/
 ├── skills/
 ├── scripts/
-└── tests/
-    ├── integration/
-    └── network/
+├── tests/
+│   ├── integration/
+│   └── network/
+├── reports/
+│   ├── baseline/
+│   ├── comparisons/
+│   ├── failures/
+│   ├── final-report.md
+│   └── reviews/
+├── artifacts/
+└── articles/
 ```
+
+#### ディレクトリごとの役割
+
+| ディレクトリ | 役割 |
+|---|---|
+| `./` | プロジェクト全体の入口、共通コマンド、Compose構成、所有者定義を置く |
+| `.github/` | GitHub上の自動化とリポジトリ運用設定を管理する |
+| `.github/workflows/` | 静的検査、決定的テスト、手動Agent Eval、artifact保存を実行するCI workflowを置く |
+| `docs/` | 人がレビューする設計、ガバナンス、安全条件、再現手順を管理する |
+| `docs/adr/` | 重要な設計判断について、背景、決定、影響、状態を1件1ファイルで残す |
+| `policy/` | 権限ルールとschemaを置き、Gatewayとテストが参照する機械可読な正本とする |
+| `scenarios/` | 12ケースの仕様、架空fixture、期待結果を管理し、評価Datasetの入力元とする |
+| `scenarios/expected/` | 各ケースで期待するdecision、応答、状態差分、scoreの参照結果を置く |
+| `scenarios/fixtures/` | Project A/Bの文書、Issue、Injection、Canaryなど架空の初期データを置く |
+| `gateway/` | 認可、承認の引数拘束、転送、監査ログを担うGo Gatewayを実装する |
+| `services/` | Project A/Bの模擬MCPとCanary Sinkを、独立した信頼境界として実装する |
+| `services/project-a-mcp/` | Project Aの架空文書・Issueと、受信ログ・状態初期化APIを実装する |
+| `services/project-b-mcp/` | Project Bの架空文書・Issueを分離し、越境要求の受信有無を記録する |
+| `services/canary-sink/` | 検知用Canaryの受信、検索、初期化を行い、流出有無の証拠を残す |
+| `probe/` | Agentと同条件で禁止要求を必ず送る、非LLMのPolicy Violation Probeを実装する |
+| `evals/` | エージェント評価に関する設定とコードを評価基盤別にまとめる |
+| `evals/inspect/` | Inspect AIのTask、Agent接続、Code Scorer、Sandbox設定を管理する |
+| `evals/inspect/agents/` | Harness、Prompt、Skills、Tools、Identityを組み合わせた評価対象を定義する |
+| `evals/inspect/scorers/` | trace、ログ、通信、最終状態を検査する決定的なScorerを実装する |
+| `evals/inspect/tasks/` | Dataset、Agent/Solver、Scorer、Sandboxを結ぶInspect Taskを定義する |
+| `skills/` | read、write、敵対的fixture用のテストSkillと、その参照file・scriptを置く |
+| `scripts/` | 初期化、検証、結果収集、redactionなど、Make targetから呼ぶ補助処理を置く |
+| `tests/` | コンポーネント間の結合試験と、到達性・迂回・遮断を確認するnetwork試験を置く |
+| `tests/integration/` | Gateway、模擬MCP、Sink、Probeを接続し、認可と副作用を検証する |
+| `tests/network/` | 正常疎通、直接接続、redirect、禁止session、観測系の稼働を検証する |
+| `reports/` | baseline、失敗分析、変更比較、人間レビュー、最終レポートを保存する |
+| `reports/baseline/` | 固定した構成に対する12ケース×複数trialの基準結果を置く |
+| `reports/comparisons/` | モデル、Prompt、Skill、Policy等の変更前後を比較した結果を置く |
+| `reports/failures/` | 失敗の症状、証拠、原因、修正、回帰結果、残余リスクを残す |
+| `reports/reviews/` | 高リスクtrialや採点不一致に対する人間レビューの記録を置く |
+| `artifacts/` | trialごとの生ログ、eval log、状態snapshotなど一時的な証拠を置く。原則Git管理外とする |
+| `articles/` | 機密検査とredactionを終えた技術記事や発表資料の原稿を置く |
+
+Goの単体テストは対象コードと同じpackageに、Inspect AIのScorer単体テストは`evals/inspect/`配下に置く。`tests/`は複数コンポーネントまたはnetwork境界を使う試験に限定する。
+
+#### 主要な設定・ドキュメントの内容
+
+| ファイル | 記載・定義する内容 |
+|---|---|
+| `README.md` | プロジェクトの問い、現在地、構成、Quick Start、評価結果、既知の限界 |
+| `ROADMAP.md` | Phaseごとの着手条件、作業、成果物、完了条件、停止条件、追加課題 |
+| `Makefile` | `bootstrap`、`validate`、`verify`、`eval`、`report`、`clean`の共通入口 |
+| `compose.yaml` | service、信頼境界ごとのnetwork、volume、resource上限、health check |
+| `.env.example` | 必要な環境変数名と安全な例。実credentialやsecretは記載しない |
+| `CODEOWNERS` | Policy、Skills、Scorer、Gatewayなど重要領域のレビュー責任者 |
+| `docs/project-charter.md` | 目的、検証仮説、成功条件、非目標、対象読者、期間 |
+| `docs/rules-of-engagement.md` | 許可された試験、禁止対象、停止条件、実行権限、安全上の制約 |
+| `docs/test-data-policy.md` | 架空データとCanaryの規則、credential方針、redaction、保存・公開範囲 |
+| `docs/threat-model.md` | asset、trust boundary、脅威、攻撃経路、対策、残余リスク |
+| `docs/authorization-matrix.md` | principal、project、resource、action、conditionごとの期待decision |
+| `docs/architecture.md` | Control Plane、Agent/Probe、Gateway、MCP、証拠収集の構成とデータフロー |
+| `docs/network-boundaries.md` | network接続行列、default deny、許可経路、禁止経路、例外 |
+| `docs/event-schema.md` | 構造化ログの必須field、型、相関ID、redaction、versioning |
+| `docs/skill-review-checklist.md` | Skillのowner、目的、権限、参照物、script、MCP、通信、依存、有効期限 |
+| `docs/reproduction.md` | 前提条件、構築、fixture投入、テスト、証拠確認、後片付け、障害対応 |
+| `docs/adr/*.md` | 個別の設計判断に対するContext、Decision、Consequences、Status |
+| `policy/access-policy.yaml` | version、principal、scope、resource、action、condition、approval要件 |
+| `policy/access-policy.schema.json` | ポリシーの必須項目、型、列挙値、不正形式を拒否する検証規則 |
+| `scenarios/cases.yaml` | 各ケースのfixture、task、identity、期待結果、必要証拠、score分類 |
+| `reports/final-report.md` | 仮説、構成、評価方法、結果、失敗、限界、残余リスク、次の判断 |
 
 実装中に責務が不自然になる場合は構成を変更してよい。ただし変更理由はADRへ残し、テスト・実行・証拠の場所はREADMEから辿れるようにする。
 
